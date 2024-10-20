@@ -29,12 +29,12 @@ fn main() {
 we can automate the `From` implementation
 
 ```rust
-use macros::FromVariants;
+use macros::FromUnit;
 
 struct Mp3;
 struct Mp4;
 
-#[derive(FromVariants)]
+#[derive(FromUnit)]
 enum Player {
     Mp3(Mp3),
     Mp4(Mp4),
