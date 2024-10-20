@@ -51,9 +51,10 @@ impl Parse for ManualDispatch {
                         }
                     }).collect::<Result<Vec<_>>>()?;
                     let fn_name = &sig.ident;
+                    let asyn = sig.asyncness.map(|_|quote! { .await });
                     let mt = vr_names.iter().map(|vr|{
                         quote! {
-                            Self::#vr(vr) => #trq::#fn_name(vr,#(#args),*)
+                            Self::#vr(vr) => #trq::#fn_name(vr,#(#args),*) #asyn
                         }
                     });
 

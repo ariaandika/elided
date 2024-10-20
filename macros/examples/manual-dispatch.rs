@@ -6,6 +6,7 @@ struct Mp5;
 
 trait Player {
     fn play(&mut self, id: usize);
+    fn clap(&mut self) -> impl std::future::Future<Output = ()> { std::future::ready(()) }
 }
 
 dispatch! {
@@ -16,6 +17,7 @@ dispatch! {
     }
     impl Player for Players {
         fn play(&mut self, id: usize) { }
+        async fn clap(&mut self) { }
     }
 }
 
