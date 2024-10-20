@@ -51,7 +51,7 @@ fn main() {
 polymorphism is rust uses either generics via static dispatch,
 or trait object via dynamic dispatch
 
-see example in `example/examples/dyn.rs`
+see example in `example/examples/manual-dispatch.rs`
 
 ```rust
 struct Mp3;
@@ -76,7 +76,7 @@ fn play_music(player: &mut dyn Player) {
 }
 ```
 
-but there is limitation
+but there is a catch
 
 ```rust
 // runtime cost
@@ -119,18 +119,30 @@ fn main() {
     let mut player = get_music(1);
     play_music(&mut player);
 }
+
+fn play_music(player: &mut impl Player) {
+    player.play();
+}
 ```
 
-we can automate the trait implementation part
+we can automate the trait implementation for the enum
+
+there is a couple macro shape currently work in progress
+
+### Proc Macro
+
+cons: cannot be used for external trait
 
 ```rust
-use macros::Dispatch;
+macros::dispatch! {
+    trait Player {
+        fn play(&mut self);
+    }
 
-#[derive(Dispatch)]
-#[dispatch(Player)]
-enum Players {
-    Mp3(Mp3),
-    Mp4(Mp4),
+    enum Players {
+        Mp3(Mp3),
+        Mp4(Mp4),
+    }
 }
 
 fn get_music(id: usize) -> Players {
@@ -144,6 +156,10 @@ fn get_music(id: usize) -> Players {
 fn main() {
     let mut player = get_music(1);
     play_music(&mut player);
+}
+
+fn play_music(player: &mut impl Player) {
+    player.play();
 }
 ```
 
