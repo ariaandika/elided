@@ -127,21 +127,14 @@ fn play_music(player: &mut impl Player) {
 
 we can automate the trait implementation for the enum
 
-there is a couple macro shape currently work in progress
-
-### Proc Macro
-
-cons: cannot be used for external trait
-
 ```rust
 macros::dispatch! {
-    trait Player {
-        fn play(&mut self);
+    enum PlayersV3 {
+        Mp3(Mp3)
+        Mp4(Mp4)
     }
-
-    enum Players {
-        Mp3(Mp3),
-        Mp4(Mp4),
+    impl Player for PlayerV3 {
+        fn play(&mut self, id: usize) { }
     }
 }
 

@@ -4,15 +4,18 @@ struct Mp3;
 struct Mp4;
 struct Mp5;
 
-dispatch! {
-    trait Player {
-        fn play(&mut self, id: usize);
-    }
+trait Player {
+    fn play(&mut self, id: usize);
+}
 
+dispatch! {
     enum Players {
         Mp3(Mp3),
         Mp4(Mp4),
         Mp5(Mp5),
+    }
+    impl Player for Players {
+        fn play(&mut self, id: usize) { }
     }
 }
 

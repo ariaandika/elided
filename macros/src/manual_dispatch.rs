@@ -4,21 +4,23 @@ pub struct ManualDispatch(TokenStream);
 
 impl Parse for ManualDispatch {
     fn parse(input: ParseStream) -> Result<Self> {
-        let file = input.parse::<File>()?;
-
-        let Some(tr) = file.items.iter().find_map(|e|match e {
-            Item::Trait(tr) => Some(tr),
-            _ => None
-        }) else {
-            return Err(input.error("trait declaration required"));
-        };
+        let mut file = input.parse::<File>()?;
 
         let Some(en) = file.items.iter().find_map(|e|match e {
-            Item::Enum(en) => Some(en),
+            Item::Enum(en) => Some(en as *const ItemEnum),
             _ => None
         }) else {
-            return Err(input.error("enum declaration required"));
+            return Err(input.error("expected enum declaration"));
         };
+        let en = unsafe { &*en };
+
+        let Some(im) = file.items.iter_mut().find_map(|e|match e {
+            Item::Impl(im) => Some(im as *mut ItemImpl),
+            _ => None
+        }) else {
+            return Err(input.error("expected trait implementation"));
+        };
+        let im = unsafe { &mut *im };
 
         en.variants.iter().map(|e|{
             match &e.fields {
@@ -27,13 +29,18 @@ impl Parse for ManualDispatch {
             }
         }).collect::<Result<Vec<_>>>()?;
 
-        let trq = &tr.ident;
-        let slq = &en.ident;
+        let Some((_, _tr, _)) = im.trait_.as_ref() else {
+            return Err(input.error("expected trait implementation"))
+        };
 
-        let fnq = tr.items.iter().map(|e|{
-            match e {
-                TraitItem::Fn(tfn) => {
-                    let sig = &tfn.sig;
+        let trq = _tr.clone();
+
+        for item in &mut im.items {
+            match item {
+                ImplItem::Fn(item_fn)
+                    if matches!(item_fn.sig.inputs.first(),Some(FnArg::Receiver(_))) =>
+                {
+                    let sig = &item_fn.sig;
                     let args = sig.inputs.iter().skip(1).map(|e|{
                         match e {
                             FnArg::Receiver(_) => Err(input.error("invalid self")),
@@ -50,23 +57,18 @@ impl Parse for ManualDispatch {
                             Self::#vr(vr) => #trq::#fn_name(vr,#(#args),*)
                         }
                     });
-                    Ok(quote! { #sig { match self { #(#mt),* } } })
-                }
-                _ => Err(input.error("expect function trait definition"))
-            }
-        }).collect::<Result<Vec<_>>>()?;
 
-        let im = quote! {
-            impl #trq for #slq {
-                #(#fnq)*
+                    item_fn.block = parse_quote!({
+                        match self {
+                            #(#mt),*
+                        }
+                    });
+                }
+                _ => {},
             }
         };
 
-        Ok(Self(quote! {
-            #tr
-            #en
-            #im
-        }))
+        Ok(Self(file.to_token_stream()))
     }
 }
 
