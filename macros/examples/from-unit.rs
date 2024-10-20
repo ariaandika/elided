@@ -23,5 +23,6 @@ enum Player {
 
 fn main() {
     let _player: Player = Mp3.into();
+    let _player: Player = (Mp3,Mp4,Mp5).into();
 }
 
