@@ -7,20 +7,11 @@ impl Parse for ManualDispatch {
         let mut file = input.parse::<File>()?;
 
         let Some(en) = file.items.iter().find_map(|e|match e {
-            Item::Enum(en) => Some(en as *const ItemEnum),
+            Item::Enum(en) => Some(en),
             _ => None
         }) else {
             return Err(input.error("expected enum declaration"));
         };
-        let en = unsafe { &*en };
-
-        let Some(im) = file.items.iter_mut().find_map(|e|match e {
-            Item::Impl(im) => Some(im as *mut ItemImpl),
-            _ => None
-        }) else {
-            return Err(input.error("expected trait implementation"));
-        };
-        let im = unsafe { &mut *im };
 
         en.variants.iter().map(|e|{
             match &e.fields {
@@ -28,6 +19,15 @@ impl Parse for ManualDispatch {
                 _ => Err(input.error("expect single unamed type"))
             }
         }).collect::<Result<Vec<_>>>()?;
+
+        let vr_names = en.variants.iter().map(|e|e.ident.clone()).collect::<Vec<_>>();
+
+        let Some(im) = file.items.iter_mut().find_map(|e|match e {
+            Item::Impl(im) => Some(im),
+            _ => None
+        }) else {
+            return Err(input.error("expected trait implementation"));
+        };
 
         let Some((_, _tr, _)) = im.trait_.as_ref() else {
             return Err(input.error("expected trait implementation"))
@@ -51,8 +51,7 @@ impl Parse for ManualDispatch {
                         }
                     }).collect::<Result<Vec<_>>>()?;
                     let fn_name = &sig.ident;
-                    let mt = en.variants.iter().map(|vr|{
-                        let vr = &vr.ident;
+                    let mt = vr_names.iter().map(|vr|{
                         quote! {
                             Self::#vr(vr) => #trq::#fn_name(vr,#(#args),*)
                         }
