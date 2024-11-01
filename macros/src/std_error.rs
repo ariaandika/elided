@@ -45,12 +45,19 @@ impl ToTokens for StdError {
                 }
             });
 
+            let variant_name = variant.to_string();
+
             debug.extend(quote! {
-                Self::#variant(err) => std::fmt::Debug::fmt(err, f),
+                Self::#variant(err) => f.debug_tuple(#variant_name)
+                    .field(err)
+                    .finish(),
             });
 
             display.extend(quote! {
-                Self::#variant(err) => std::fmt::Display::fmt(err, f),
+                Self::#variant(err) => {
+                    write!(f, "{}: ", #variant_name)?;
+                    std::fmt::Display::fmt(err, f)
+                },
             });
         }
 
