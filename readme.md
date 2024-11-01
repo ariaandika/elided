@@ -156,3 +156,40 @@ fn play_music(player: &mut impl Player) {
 }
 ```
 
+## Error Wrapper
+
+we usually create error enum to wrap error from underlying api
+
+```rust
+enum PlayerError {
+    Mp3(Mp3Error),
+    Mp4(Mp4Error),
+}
+
+fn main() -> Result<(), PlayerError> {
+    if let Err(err) = play_mp3() {
+        return Err(PlayerError::Mp3(err))
+    }
+    if let Err(err) = play_mp4() {
+        return Err(PlayerError::Mp4(err))
+    }
+    Ok(())
+}
+```
+
+we can automate the `From` and `Error` implementation
+
+```rust
+#[derive(StdError)]
+enum PlayerError {
+    Mp3(Mp3Error),
+    Mp4(Mp4Error),
+}
+
+fn main() -> Result<(), PlayerError> {
+    play_mp3()?;
+    play_mp4()?;
+    Ok(())
+}
+```
+
