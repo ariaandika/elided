@@ -1,0 +1,7 @@
+[package]
+name = "elided"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+elided-macros = { version = "0.1.0", path = "../elided-macros" }

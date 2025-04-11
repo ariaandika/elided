@@ -1,5 +1,5 @@
 [workspace]
-members = ["sidecall", "sidecall-macros"]
+members = ["elided", "elided-macros"]
 resolver = "2"
 
 

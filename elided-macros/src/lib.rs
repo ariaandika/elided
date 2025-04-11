@@ -6,6 +6,15 @@ use quote::{quote, format_ident, ToTokens};
 mod from_unit;
 mod manual_dispatch;
 mod std_error;
+mod delegate;
+
+#[proc_macro_derive(Delegate)]
+pub fn delegate(input: Token1) -> Token1 {
+    match delegate::delegate(&syn::parse_macro_input!(input as syn::DeriveInput)) {
+        Ok(ok) => ok.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
+}
 
 #[proc_macro_derive(FromUnit)]
 pub fn from_unit(input: Token1) -> Token1 {
