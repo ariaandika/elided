@@ -109,6 +109,13 @@ impl<T, const S: usize> std::ops::DerefMut for Stack<T, S> {
     }
 }
 
+impl<T: std::fmt::Debug, const S: usize> std::fmt::Debug for Stack<T, S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self.as_slice(), f)
+    }
+}
+
+
 
 /// A consuming iterator from [`Stack<T>`]
 ///
