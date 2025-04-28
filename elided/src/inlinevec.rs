@@ -1,31 +1,13 @@
 use std::mem::{self, MaybeUninit};
 
 #[derive(Clone)]
-pub struct InlineVec<T, const S: usize = 16> {
+pub struct InlineVec<T, const S: usize> {
     inner: Inner<T,S>,
 }
 
-enum Inner<T, const S: usize = 16> {
+enum Inner<T, const S: usize> {
     Array(usize,[MaybeUninit<T>;S]),
     Vec(Vec<T>),
-}
-
-impl<T, const S: usize> Clone for Inner<T, S>
-where
-    T: Clone,
-{
-    fn clone(&self) -> Self {
-        match self {
-            Inner::Array(len, items) => {
-                let mut items2 = [const { MaybeUninit::uninit() }; S];
-                for (i1, i2) in items[..*len].iter().zip(&mut items2[..*len]) {
-                    i2.write(unsafe { i1.assume_init_ref() }.clone());
-                }
-                Inner::Array(*len, items2)
-            }
-            Inner::Vec(items) => Inner::Vec(Vec::clone(items)),
-        }
-    }
 }
 
 impl<T, const S: usize> InlineVec<T, S> {
@@ -35,7 +17,7 @@ impl<T, const S: usize> InlineVec<T, S> {
         }
     }
 
-    pub fn capacity(capacity: usize) -> Self {
+    pub fn with_capacity(capacity: usize) -> Self {
         Self {
             inner: match capacity <= S {
                 true => Inner::Array(0, [const { MaybeUninit::uninit() }; S]),
@@ -114,6 +96,30 @@ impl<T, const S: usize> Drop for InlineVec<T, S> {
     }
 }
 
+impl<T, const S: usize> Clone for Inner<T, S>
+where
+    T: Clone,
+{
+    fn clone(&self) -> Self {
+        match self {
+            Inner::Array(len, items) => {
+                let mut items2 = [const { MaybeUninit::uninit() }; S];
+                for (i1, i2) in items[..*len].iter().zip(&mut items2[..*len]) {
+                    i2.write(unsafe { i1.assume_init_ref() }.clone());
+                }
+                Inner::Array(*len, items2)
+            }
+            Inner::Vec(items) => Inner::Vec(Vec::clone(items)),
+        }
+    }
+}
+
+impl<T: std::fmt::Debug, const S: usize> std::fmt::Debug for InlineVec<T, S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self.as_slice(), f)
+    }
+}
+
 impl<T, const S: usize> Default for InlineVec<T, S> {
     fn default() -> Self {
         Self::new()
@@ -134,9 +140,62 @@ impl<T, const S: usize> std::ops::DerefMut for InlineVec<T, S> {
     }
 }
 
-impl<T: std::fmt::Debug, const S: usize> std::fmt::Debug for InlineVec<T, S> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(self.as_slice(), f)
+impl<T: Eq, const S: usize> Eq for InlineVec<T, S> {}
+
+macro_rules! __impl_slice_eq1 {
+    ($lhs:ty, $rhs:ty $(where $ty:ty: $bound:ident)?) => {
+        impl<T, U, const S: usize> PartialEq<$rhs> for $lhs
+        where
+            T: PartialEq<U>,
+            $($ty: $bound)?
+        {
+            #[inline]
+            fn eq(&self, other: &$rhs) -> bool { self[..] == other[..] }
+            #[inline]
+            fn ne(&self, other: &$rhs) -> bool { self[..] != other[..] }
+        }
+    }
+}
+
+__impl_slice_eq1! { InlineVec<T,S>, InlineVec<U,S> }
+__impl_slice_eq1! { InlineVec<T,S>, Vec<U> }
+__impl_slice_eq1! { InlineVec<T,S>, [U] }
+__impl_slice_eq1! { InlineVec<T,S>, &[U] }
+__impl_slice_eq1! { InlineVec<T,S>, &mut [U] }
+__impl_slice_eq1! { [T], InlineVec<U,S> }
+__impl_slice_eq1! { &[T], InlineVec<U,S> }
+__impl_slice_eq1! { &mut [T], InlineVec<U,S> }
+
+impl<T, const S: usize> From<[T;S]> for InlineVec<T, S> {
+    #[inline]
+    fn from(value: [T;S]) -> Self {
+        let mut me = Self::new();
+        for val in value.into_iter() {
+            me.push(val);
+        }
+        me
+    }
+}
+
+impl<T: std::hash::Hash, const S: usize> std::hash::Hash for InlineVec<T, S> {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        std::hash::Hash::hash(&**self, state)
+    }
+}
+
+impl<T, I: std::slice::SliceIndex<[T]>, const S: usize> std::ops::Index<I> for InlineVec<T, S> {
+    type Output = I::Output;
+
+    #[inline]
+    fn index(&self, index: I) -> &Self::Output {
+        std::ops::Index::index(&**self, index)
+    }
+}
+
+impl<T, I: std::slice::SliceIndex<[T]>, const S: usize> std::ops::IndexMut<I> for InlineVec<T, S> {
+    fn index_mut(&mut self, index: I) -> &mut Self::Output {
+        std::ops::IndexMut::index_mut(&mut **self, index)
     }
 }
 
@@ -165,7 +224,7 @@ impl<T, const S: usize> IntoIterator for InlineVec<T, S> {
     }
 }
 
-pub struct IntoIter<T, const S: usize = 16> {
+pub struct IntoIter<T, const S: usize> {
     inner: IntoIterInner<T, S>,
 }
 
